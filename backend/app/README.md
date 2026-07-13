@@ -1,5 +1,12 @@
 # backend\app\README.md
 In this directory, we store the core application logic for the FastAPI backend. This project strictly follows a layered architectural pattern to separate concerns, ensure modularity, and maintain maximum security.
+**Server build command squence:**
+``` bash
+cd backend
+.venv/scripts/activate
+uvicorn app.main:app --reload
+```
+ 
 
 We use this file (backend\app\README.md) to define the global rules of the backend architecture and to bridge the interactions between all subdirectories.
 
