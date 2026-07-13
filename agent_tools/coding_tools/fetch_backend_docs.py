@@ -1,9 +1,10 @@
+import os
 import sys
 import json
 import urllib.request
 import urllib.error
 
-def fetch_openapi(url="http://localhost:8000/openapi.json"):
+def fetch_openapi(url="http://127.0.0.1:8000/openapi.json"):
     try:
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req) as response:
@@ -34,7 +35,24 @@ def main():
                 print(f"  {p}")
             sys.exit(1)
     else:
-        print(json.dumps(docs, indent=2))
+        out_dir = os.path.dirname(os.path.abspath(__file__))
+        out_path = os.path.join(out_dir, "openapi.json")
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(docs, f, indent=2)
+        print(f"Documentation saved to {out_path}")
 
 if __name__ == "__main__":
     main()
+
+"""
+Command sequence
+1)Terminal 1 — Start and keep the server running
+cd backend
+.venv/scripts/activate
+uvicorn app.main:app --reload
+
+
+2)Terminal 2 — Fetch the OpenAPI docs file
+python agent_tools/coding_tools/fetch_backend_docs.py
+
+"""
