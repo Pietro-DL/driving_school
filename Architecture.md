@@ -45,55 +45,57 @@ This section details the lifecycle of user authentication and authorization.
 #### Phase 1: The Login Flow & Token Generation
 This is the process from the moment the user clicks "Login" to the moment they are authenticated.
 
-1. Client-Side (UI Rendering): The user accesses the website. The frontend (frontend/src/features/auth/) renders the login form.
+1. **Client-Side (UI Rendering):** The user accesses the website. The frontend (frontend/src/features/auth/) renders the login form.
 
-2. Client-Side (Request): The user submits their email and password. A function in frontend/src/api/ sends an HTTP POST request to the backend with these credentials.
+2. **Client-Side (Request):** The user submits their email and password. A function in frontend/src/api/ sends an HTTP POST request to the backend with these credentials.
 
-3. Server-Side (Routing): The FastAPI router at backend/app/api/v1/endpoints/auth.py receives the payload. It does not process the logic; it immediately passes the data to the service layer.
+3. **Server-Side (Routing):** The FastAPI router at backend/app/api/v1/endpoints/auth.py receives the payload. It does not process the logic; it immediately passes the data to the service layer.
 
-4. Server-Side (Validation): backend/app/services/auth_srv.py takes over. It queries the PostgreSQL database (via backend/app/db/ and backend/app/models/) to find the user by email.
+4. **Server-Side (Validation):** backend/app/services/auth_srv.py takes over. It queries the PostgreSQL database (via backend/app/db/ and backend/app/models/) to find the user by email.
 
-5. Server-Side (Security Check): The service layer hashes the incoming password using a secure algorithm (like bcrypt) and compares it to the hashed password stored in the database.
+5. **Server-Side (Security Check):** The service layer hashes the incoming password using a secure algorithm (like bcrypt) and compares it to the hashed password stored in the database.
 
-6. Server-Side (JWT Generation): If the passwords match, backend/app/core/security.py generates the JWT. The token contains a JSON payload (e.g., {"sub": "user_123", "role": "student", "plan": "premium", "exp": 1718293847}). The server encrypts this payload with a highly secure, private string (the SECRET_KEY stored in your .env file) to create a signature.
+6. **Server-Side (JWT Generation):** If the passwords match, backend/app/core/security.py generates the JWT. The token contains a JSON payload (e.g., {"sub": "user_123", "role": "student", "plan": "premium", "exp": 1718293847}). The server encrypts this payload with a highly secure, private string (the SECRET_KEY stored in your .env file) to create a signature.
 
-7. Server-Side (Response): The server sends the JWT back to the client.
+7. **Server-Side (Response):** The server sends the JWT back to the client.
 
 #### Phase 2: Token Storage & Exchange
 Once the frontend has the token, it must hold onto it and present it like an ID badge for future requests.
 
-- Client-Side (Storage): The frontend receives the JWT. For maximum security against Cross-Site Scripting (XSS) attacks, the frontend should store this token in an HttpOnly Cookie. This means the browser holds the token and automatically attaches it to future requests, but malicious JavaScript cannot read it. (If you use localStorage, your frontend/src/api/ wrappers must manually attach it to the Authorization header as a Bearer token).
+- **Client-Side (Storage):** The frontend receives the JWT. For maximum security against Cross-Site Scripting (XSS) attacks, the frontend should store this token in an HttpOnly Cookie. This means the browser holds the token and automatically attaches it to future requests, but malicious JavaScript cannot read it. (If you use localStorage, your frontend/src/api/ wrappers must manually attach it to the Authorization header as a Bearer token).
 
-- Client-Side (State): The frontend decodes the JWT payload (which is safe to do client-side, as the payload is just base64 encoded, not encrypted) to update the UI state in frontend/src/features/auth/ (e.g., showing the user's name and hiding the "Buy Premium" button if they already have it).
+- **Client-Side (State):** The frontend decodes the JWT payload (which is safe to do client-side, as the payload is just base64 encoded, not encrypted) to update the UI state in frontend/src/features/auth/ (e.g., showing the user's name and hiding the "Buy Premium" button if they already have it).
 
 #### Phase 3: Authorization (Accessing Protected Resources)
 This is what happens when a user tries to access a quiz or a video lesson.
 
-1. Client-Side (Request): The user clicks on a premium lesson. frontend/src/api/ sends a GET request to the backend. The browser automatically includes the HttpOnly Cookie containing the JWT.
+1. **Client-Side (Request):** The user clicks on a premium lesson. frontend/src/api/ sends a GET request to the backend. The browser automatically includes the HttpOnly Cookie containing the JWT.
 
-2. Server-Side (Interception): Before the request reaches the endpoint, a dependency injection in backend/app/core/dependencies.py intercepts it.
+2. **Server-Side (Interception):** Before the request reaches the endpoint, a dependency injection in backend/app/core/dependencies.py intercepts it.
 
-3. Server-Side (Verification): The server extracts the JWT and uses its SECRET_KEY to verify the signature.
+3. **Server-Side (Verification):** The server extracts the JWT and uses its SECRET_KEY to verify the signature.
 
 - If the signature is invalid (someone tampered with the token), the server rejects it with a 401 Unauthorized.
 
 - If the exp (expiration) timestamp has passed, it rejects it.
 
-4. Server-Side (Access Control): If verified, the server looks at the payload (e.g., "plan": "basic"). It checks this against the requirements of the endpoint (backend/app/api/v1/endpoints/lessons.py). If the lesson requires a "premium" plan, the server rejects the request with a 403 Forbidden.
+4. **Server-Side (Access Control):** If verified, the server looks at the payload (e.g., "plan": "basic"). It checks this against the requirements of the endpoint (backend/app/api/v1/endpoints/lessons.py). If the lesson requires a "premium" plan, the server rejects the request with a 403 Forbidden.
 
-5. Server-Side (Execution): If the user has the right plan, the request is routed to backend/app/services/lesson_srv.py to fetch the data and return it to the client.
+5. **Server-Side (Execution):** If the user has the right plan, the request is routed to backend/app/services/lesson_srv.py to fetch the data and return it to the client.
 
-Phase 4: Cybersecurity & Database Protection
+#### Phase 4: Cybersecurity & Database Protection
 Protecting the PostgreSQL database and the integrity of the system relies on strict boundaries.
 
-JWT Integrity: Because the JWT is cryptographically signed by backend/app/core/security.py, a hacker cannot intercept their token, change "plan": "basic" to "plan": "premium", and send it back. The server will see the signature no longer matches the payload and will instantly drop the request.
+- **JWT Integrity:** Because the JWT is cryptographically signed by backend/app/core/security.py, a hacker cannot intercept their token, change "plan": "basic" to "plan": "premium", and send it back. The server will see the signature no longer matches the payload and will instantly drop the request.
 
-Database Exploitation (SQL Injection): You will use an ORM (Object-Relational Mapper) like SQLAlchemy in your backend/app/db/ directory. You will never write raw SQL strings like SELECT * FROM users WHERE email = ' + user_input + '. SQLAlchemy uses parameterized queries, which automatically sanitize all user inputs, making traditional SQL injection practically impossible.
+- **Database Exploitation (SQL Injection):** You will use an ORM (Object-Relational Mapper) like SQLAlchemy in your backend/app/db/ directory. You will never write raw SQL strings like SELECT * FROM users WHERE email = ' + user_input + '. SQLAlchemy uses parameterized queries, which automatically sanitize all user inputs, making traditional SQL injection practically impossible.
 
-Data Minimization: The JWT payload only contains non-sensitive identifiers (User ID, Role, Plan). It never contains passwords, personal addresses, or payment details. If a token is somehow intercepted, the attacker only gets a temporary session badge, not the user's identity data.
+- **Data Minimization:** The JWT payload only contains non-sensitive identifiers (User ID, Role, Plan). It never contains passwords, personal addresses, or payment details. If a token is somehow intercepted, the attacker only gets a temporary session badge, not the user's identity data.
 
 ## 2. Subscription Lifecycle (Stripe Integration)
 This section details the process of purchasing a subscription and verifying payment.
+
+### Thread scheme of the transaction.
 
 [ Frontend Browser ]         [ FastAPI Backend ]         [ Payment Gateway (Stripe) ]
          |                            |                               |
@@ -115,3 +117,37 @@ This section details the process of purchasing a subscription and verifying paym
          |                            | 7. Verify Signature & Payload |                 |
          |                            |    Update DB to "Premium"     |                 |
          |                            |----------------------------   |                 |
+
+### Step-by-Step Breakdown
+1. **Initiation (Client to Server):** The user clicks "Buy Premium". The frontend sends a request to POST /api/v1/payments/checkout containing the requested tier.
+
+2. **Session Creation (Server to Gateway):** Your FastAPI backend calls your payment service. It contacts the gateway API securely using a secret API key. It says: "Hey, I have a user who wants to pay €50. If they succeed, send them back to [mysite.com/success](https://mysite.com/success). If they cancel, send them to [mysite.com/cancel](https://mysite.com/cancel)."
+
+3. **The Handoff:** The gateway creates a temporary, highly secure checkout page on their servers and returns the unique URL to your FastAPI server, which passes it right back to the frontend.
+
+4. **The Safe Zone:** The frontend redirects the user's browser to that gateway URL. The user is now typing their credit card details directly into the gateway's secure form (fully satisfying PCI-DSS compliance). They handle the Italian/EU bank app approvals (SCA) automatically.
+
+5. **The Asynchronous Confirmation (The Webhook):** Once paid, the gateway redirects the user back to your frontend /success screen. Crucial: The frontend doesn't know if the money actually cleared yet; it just shows a loading spinner. Meanwhile, the gateway sends a cryptographically signed POST request to your backend endpoint POST /api/v1/payments/webhook.
+
+6. **Fulfillment:** Your backend validates the gateway's signature to ensure it wasn't a hacker faking the request. It parses the payload, finds the User ID, updates that user's row in the PostgreSQL database from plan: "free" to plan: "premium", and logs the transaction ID.
+
+
+#### The Backend Modular Layout (backend/app/services/payments/)
+Instead of writing Stripe-specific code directly into your endpoints, you create a generic interface.
+
+Plaintext
+backend/app/services/payments/
+├── __init__.py
+├── base.py          # Defines the abstract "PaymentGateway" class
+├── stripe_srv.py    # Concrete implementation for Stripe
+└── mock_srv.py      # A fake provider for local testing without internet
+
+**The Base Interface (base.py):** You define a standard Python class that outlines what any payment provider must do, using generic terms.
+
+create_checkout_session(user_id: str, plan_tier: str) -> str (returns a redirect URL)
+
+handle_webhook(payload: dict, signature: str) -> bool
+
+**The Concrete Implementation (stripe_srv.py):** This file contains the actual Stripe SDK calls. It maps Stripe's native methods to your generic base methods.
+
+**The Dependency Injection (backend/app/core/dependencies.py):** Your FastAPI endpoints will request a generic PaymentGateway. FastAPI will inject whichever provider you configure in your .env file. If tomorrow you want to switch to a different bank gateway, you write a nexi_srv.py and change a single line in your environment variables.
