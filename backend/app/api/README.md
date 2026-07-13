@@ -19,3 +19,7 @@ This subdirectory contains the actual endpoint definitions, logically grouped by
   Contains endpoints for user authentication and registration. 
   - `POST /signup`: Receives user details, ensures the email isn't duplicated, hashes the password, and creates a new user.
   - `POST /login`: Receives form-data (username and password), authenticates the user via the auth service, and returns a signed JWT access token.
+
+- **`users.py`**
+  This file contains the endpoints for user management.
+  - `GET /me`: Returns the profile of the currently logged-in user.

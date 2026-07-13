@@ -15,32 +15,17 @@ router = APIRouter()
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     """
-    Register a brand new user. Checks for email duplication, hashes 
-    the password, and stores the user record in PostgreSQL.
+    Register a brand new user.
     """
-    # Check if user already exists
-    query = select(User).where(User.email == user_in.email)
-    result = await db.execute(query)
-    if result.scalars().first():
+    # Pass the data directly to the service layer
+    new_user = await auth_srv.create_user(session=db, user_in=user_in)
+    
+    if not new_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with this email already exists in the system."
         )
-    
-    # Create new user instance using our security hashing utility
-    hashed_password = security.get_password_hash(user_in.password)
-    new_user = User(
-        email=user_in.email,
-        hashed_password=hashed_password,
-        first_name=user_in.first_name,
-        last_name=user_in.last_name,
-        role="student",  # Default role
-        plan_tier="free" # Default plan tier
-    )
-    
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+        
     return new_user
 
 @router.post("/login", response_model=Token)
