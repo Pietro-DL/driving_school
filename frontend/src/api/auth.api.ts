@@ -18,9 +18,12 @@
  *  - getMeRequest() no longer accepts an accessToken parameter.
  *  - 3 new functions: verifyCodeRequest, resendCodeRequest, logoutRequest.
  *
- * Backend base URL is read from the NEXT_PUBLIC_API_BASE_URL environment variable.
- * Set this in frontend/.env.local for local development:
- *   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+ * PROXY NOTE (Phase 2):
+ *  All fetch() calls use RELATIVE paths (e.g. "/api/v1/auth/login").
+ *  Next.js rewrites in next.config.ts forward /api/* → FastAPI at
+ *  NEXT_PUBLIC_API_BASE_URL. This keeps requests same-origin so
+ *  SameSite=Lax HttpOnly cookies are attached by the browser on every call.
+ *  Never switch back to absolute URLs — that breaks cookie forwarding.
  */
 
 import type {
@@ -35,17 +38,10 @@ import type {
 } from "@/types/auth.types";
 
 // ---------------------------------------------------------------------------
-// Configuration
+// NOTE: All fetch() calls use relative paths (e.g. "/api/v1/auth/login").
+// Next.js rewrites in next.config.ts proxy /api/* → FastAPI backend.
+// This keeps requests same-origin so SameSite=Lax cookies work correctly.
 // ---------------------------------------------------------------------------
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-if (!API_BASE) {
-  throw new Error(
-    "[auth.api] NEXT_PUBLIC_API_BASE_URL is not set. " +
-      "Add it to frontend/.env.local: NEXT_PUBLIC_API_BASE_URL=http://localhost:8000"
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Typed Error Class
@@ -101,7 +97,7 @@ async function parseErrorResponse(res: Response): Promise<ApiError> {
  * Response includes is_verified: false — frontend should redirect to /verify-pending.
  */
 export async function signupRequest(data: UserCreate): Promise<UserResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/signup`, {
+  const res = await fetch("/api/v1/auth/signup", {
     method: "POST",
     credentials: "include",   // Sends/receives cookies cross-origin
     headers: { "Content-Type": "application/json" },
@@ -130,7 +126,7 @@ export async function loginRequest(credentials: LoginCredentials): Promise<Messa
     grant_type: "password",
   });
 
-  const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+  const res = await fetch("/api/v1/auth/login", {
     method: "POST",
     credentials: "include",   // Browser stores the Set-Cookie from the response
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -151,7 +147,7 @@ export async function loginRequest(credentials: LoginCredentials): Promise<Messa
  * credentials: "include" is required for the cookie to be attached cross-origin.
  */
 export async function getMeRequest(): Promise<UserResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/users/me`, {
+  const res = await fetch("/api/v1/users/me", {
     method: "GET",
     credentials: "include",
   });
@@ -173,7 +169,7 @@ export async function getMeRequest(): Promise<UserResponse> {
  * @throws ApiError(429) on brute-force lockout (5 failed attempts)
  */
 export async function verifyCodeRequest(data: VerifyCodeRequest): Promise<MessageResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/verify`, {
+  const res = await fetch("/api/v1/auth/verify", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -197,7 +193,7 @@ export async function verifyCodeRequest(data: VerifyCodeRequest): Promise<Messag
  * @throws ApiError(429) if called more than once per minute
  */
 export async function resendCodeRequest(data: ResendCodeRequest): Promise<MessageResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/resend-code`, {
+  const res = await fetch("/api/v1/auth/resend-code", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -218,7 +214,7 @@ export async function resendCodeRequest(data: ResendCodeRequest): Promise<Messag
  * After calling this, getMeRequest() will return 401.
  */
 export async function logoutRequest(): Promise<MessageResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/logout`, {
+  const res = await fetch("/api/v1/auth/logout", {
     method: "POST",
     credentials: "include",
   });

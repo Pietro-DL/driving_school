@@ -3,16 +3,20 @@
 Async email service using aiosmtplib.
 
 Compatible with:
+  - Gmail SMTP           (SMTP_HOST=smtp.gmail.com, port=587, start_tls=True)
   - SendGrid SMTP relay  (SMTP_HOST=smtp.sendgrid.net, SMTP_USER=apikey, SMTP_PASSWORD=<API_KEY>)
   - Resend SMTP relay    (SMTP_HOST=smtp.resend.com,   SMTP_USER=resend,  SMTP_PASSWORD=<API_KEY>)
 
 All config comes from app.core.config.settings — no credentials here.
 """
+import logging
 import aiosmtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -110,28 +114,46 @@ def _build_verification_email(to_email: str, code: str) -> MIMEMultipart:
 # ---------------------------------------------------------------------------
 
 async def send_verification_email(to_email: str, code: str) -> None:
+    print(f"--- HEARTBEAT: Background task triggered for {to_email} ---")
     """
     Sends the 6-digit OTP verification email.
 
     Called as a FastAPI BackgroundTask from the signup and resend-code endpoints,
     so the HTTP response is not blocked by the SMTP round-trip.
 
-    Raises: aiosmtplib.SMTPException on delivery failure (logged by FastAPI,
-    does not propagate to the client since it runs in the background).
+    Failures are caught and logged — the client already received a 201/200 response
+    and BackgroundTask exceptions would otherwise be silently discarded.
     """
     if not settings.SMTP_HOST:
         # Local dev guard: skip sending if SMTP is not configured.
         # Log the code to the console so dev can still test the verify endpoint.
-        print(f"[email_srv] SMTP not configured. OTP for {to_email}: {code}")
+        logger.warning("[email_srv] SMTP not configured. OTP for %s: %s", to_email, code)
         return
+
+    logger.info("[email_srv] Sending verification email to %s via %s:%s",
+                to_email, settings.SMTP_HOST, settings.SMTP_PORT)
 
     msg = _build_verification_email(to_email, code)
 
-    await aiosmtplib.send(
-        msg,
-        hostname=settings.SMTP_HOST,
-        port=settings.SMTP_PORT,
-        username=settings.SMTP_USER,
-        password=settings.SMTP_PASSWORD,
-        start_tls=True,
-    )
+    try:
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+        logger.info("[email_srv] Verification email delivered to %s", to_email)
+    except aiosmtplib.SMTPException as exc:
+        logger.error(
+            "[email_srv] SMTP error sending to %s: %s",
+            to_email, exc, exc_info=True,
+        )
+        raise  # Re-raise so FastAPI logs the full background task traceback
+    except Exception as exc:
+        logger.error(
+            "[email_srv] Unexpected error sending to %s: %s",
+            to_email, exc, exc_info=True,
+        )
+        raise

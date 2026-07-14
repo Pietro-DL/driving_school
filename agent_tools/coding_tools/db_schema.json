@@ -6,7 +6,7 @@
         "type": "UUID",
         "primary_key": true,
         "nullable": false,
-        "default": "<function uuid4 at 0x000001F063636FB0>",
+        "default": "<function uuid4 at 0x0000016FD2295760>",
         "unique": null
       },
       {

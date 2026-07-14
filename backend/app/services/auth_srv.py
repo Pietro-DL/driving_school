@@ -212,7 +212,12 @@ async def authenticate_user(
     """
     Verifies email + password.
     Returns the User object on success, None on any failure.
-    Note: does NOT check is_verified — the endpoint does that separately.
+
+    Deliberately does NOT check is_verified. The /login endpoint issues
+    the HttpOnly cookie for ANY user with valid credentials so the
+    frontend can call GET /users/me, read is_verified=false, and redirect
+    to /verify-pending. Business endpoints use get_current_verified_user
+    to enforce the verification gate.
     """
     query = select(User).where(User.email == email)
     result = await session.execute(query)

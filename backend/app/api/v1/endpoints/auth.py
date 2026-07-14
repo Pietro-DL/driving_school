@@ -157,22 +157,19 @@ async def verify_email(
 @router.post("/resend-code", response_model=MessageResponse)
 @limiter.limit("1/minute")
 async def resend_code(
-    request: Request,            # Required by slowapi
+    request: Request,
     payload: ResendCodeRequest,
-    background_tasks: BackgroundTasks,
+    # background_tasks: BackgroundTasks, # COMMENT THIS OUT
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Generate a fresh OTP and re-send the verification email.
-
-    Rate limit: 1 request per minute per IP (prevents email spam).
-    Overwrites the previous code — only one active OTP per user at any time.
-    Resets the failed_verify_attempts counter.
-    """
     user, raw_code = await auth_srv.regenerate_code(session=db, email=payload.email)
-    background_tasks.add_task(email_srv.send_verification_email, user.email, raw_code)
+    
+    # FORCE EXECUTION HERE
+    # Instead of queuing it, we await it directly.
+    # If this fails, the endpoint will return 500 and show us the exact error.
+    await email_srv.send_verification_email(user.email, raw_code) 
+    
     return {"message": "A new verification code has been sent to your email."}
-
 
 # ---------------------------------------------------------------------------
 # POST /logout

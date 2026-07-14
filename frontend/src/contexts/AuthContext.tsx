@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userProfile);
 
         if (!userProfile.is_verified) {
-          router.push("/verify-pending");
+          router.push(`/verify-pending?email=${encodeURIComponent(email)}`);
         } else {
           router.push("/dashboard");
         }

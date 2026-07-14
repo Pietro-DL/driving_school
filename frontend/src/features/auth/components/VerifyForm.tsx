@@ -45,6 +45,14 @@ interface VerifyFormProps {
 export function VerifyForm({ email }: VerifyFormProps) {
   const { verify, resendCode, isLoading, error, clearError } = useAuth();
 
+  const hasTriggered = useRef(false);
+
+  useEffect(() => {
+    if (!hasTriggered.current) {
+      resendCode({ email }).catch((err) => console.error("Auto-send failed:", err));
+      hasTriggered.current = true;
+    }
+  }, [email, resendCode]);
   // 6 individual digit boxes
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
@@ -165,8 +173,8 @@ export function VerifyForm({ email }: VerifyFormProps) {
             ${isExpired
               ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
               : timeLeft < 120
-              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-              : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
             }
           `}
         >
@@ -241,8 +249,8 @@ export function VerifyForm({ email }: VerifyFormProps) {
         {isLoading ? (
           <span className="flex items-center justify-center gap-2">
             <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
             Verifica in corso…
           </span>
