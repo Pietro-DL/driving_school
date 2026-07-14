@@ -11,3 +11,5 @@ python-multipart
 pydantic_settings
 aiosmtplib
 slowapi
+psycopg2-binary
+gunicorn
