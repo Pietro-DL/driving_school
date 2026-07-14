@@ -1,0 +1,84 @@
+{
+  "common": {
+    "loading": "Caricamento...",
+    "error": "Si è verificato un errore.",
+    "submit": "Invia",
+    "cancel": "Annulla",
+    "back": "Indietro",
+    "logout": "Esci"
+  },
+  "auth": {
+    "login_title": "Accedi",
+    "signup_title": "Registrati",
+    "email_label": "Email",
+    "password_label": "Password",
+    "first_name_label": "Nome",
+    "last_name_label": "Cognome",
+    "confirm_password_label": "Conferma password",
+    "login_button": "Accedi",
+    "signup_button": "Registrati",
+    "invalid_credentials": "Credenziali non valide.",
+    "signup_success": "Registrazione completata. Effettua il login.",
+    "no_account": "Non hai un account?",
+    "has_account": "Hai già un account?"
+  },
+  "nav": {
+    "home": "Home",
+    "lessons": "Lezioni",
+    "quizzes": "Quiz",
+    "dashboard": "Dashboard",
+    "login": "Accedi",
+    "pricing": "Prezzi"
+  },
+  "landing": {
+    "hero": {
+      "title_part1": "Prendi la patente in modo ",
+      "title_highlight": "semplice",
+      "title_part2": " e guidato",
+      "subtitle": "La piattaforma completa con lezioni, quiz e simulazioni d'esame. Tutto quello che ti serve per superare l'esame teorico con successo.",
+      "register_cta": "Registrati ora",
+      "discover_cta": "Scopri di più",
+      "image_alt": "Interfaccia dell'app Scuola Guida"
+    },
+    "stats": {
+      "students_number": "2.500+",
+      "students_label": "Studenti iscritti",
+      "success_rate_number": "94%",
+      "success_rate_label": "Tasso di successo",
+      "reviews_number": "4.9",
+      "reviews_label": "Recensioni verificate"
+    },
+    "about": {
+      "title": "Chi Siamo",
+      "p1": "Siamo un team di istruttori di guida esperti ed educatori digitali con una missione chiara: rendere l'apprendimento per la patente accessibile, coinvolgente e soprattutto efficace.",
+      "p2": "Dimentica i vecchi manuali noiosi. Con il nostro metodo guidato, imparerai le regole della strada attraverso quiz interattivi, spiegazioni video e simulazioni realistiche.",
+      "video_placeholder": "Video Placeholder"
+    },
+    "pricing": {
+      "title": "Piani e Prezzi",
+      "subtitle": "Scegli il piano più adatto alle tue esigenze per prepararti al meglio all'esame.",
+      "month": "/mese",
+      "tier1": {
+        "name": "Livello 1: Essenziale",
+        "price": "€ 29",
+        "features": [
+          "Accesso a tutte le lezioni teoriche",
+          "Quiz base per ogni capitolo",
+          "Supporto via email"
+        ],
+        "cta": "Scegli Essenziale"
+      },
+      "tier2": {
+        "name": "Livello 2: Premium",
+        "badge": "Più Scelto",
+        "price": "€ 49",
+        "features": [
+          "Tutto il piano Essenziale",
+          "Simulazioni d'esame illimitate",
+          "Statistiche avanzate"
+        ],
+        "cta": "Scegli Premium"
+      }
+    }
+  }
+}

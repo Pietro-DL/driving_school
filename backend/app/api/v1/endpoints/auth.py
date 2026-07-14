@@ -159,15 +159,13 @@ async def verify_email(
 async def resend_code(
     request: Request,
     payload: ResendCodeRequest,
-    # background_tasks: BackgroundTasks, # COMMENT THIS OUT
+    background_tasks: BackgroundTasks, # <-- Restore this
     db: AsyncSession = Depends(get_db),
 ):
     user, raw_code = await auth_srv.regenerate_code(session=db, email=payload.email)
     
-    # FORCE EXECUTION HERE
-    # Instead of queuing it, we await it directly.
-    # If this fails, the endpoint will return 500 and show us the exact error.
-    await email_srv.send_verification_email(user.email, raw_code) 
+    # Revert to background task
+    background_tasks.add_task(email_srv.send_verification_email, user.email, raw_code)
     
     return {"message": "A new verification code has been sent to your email."}
 

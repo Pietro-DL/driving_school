@@ -114,7 +114,6 @@ def _build_verification_email(to_email: str, code: str) -> MIMEMultipart:
 # ---------------------------------------------------------------------------
 
 async def send_verification_email(to_email: str, code: str) -> None:
-    print(f"--- HEARTBEAT: Background task triggered for {to_email} ---")
     """
     Sends the 6-digit OTP verification email.
 

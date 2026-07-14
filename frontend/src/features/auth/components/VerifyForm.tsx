@@ -44,15 +44,15 @@ interface VerifyFormProps {
 
 export function VerifyForm({ email }: VerifyFormProps) {
   const { verify, resendCode, isLoading, error, clearError } = useAuth();
-
+  // --- INSERT HERE ---
   const hasTriggered = useRef(false);
-
   useEffect(() => {
     if (!hasTriggered.current) {
-      resendCode({ email }).catch((err) => console.error("Auto-send failed:", err));
+      resendCode({ email }).catch(console.error);
       hasTriggered.current = true;
     }
   }, [email, resendCode]);
+  // -------------------
   // 6 individual digit boxes
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
