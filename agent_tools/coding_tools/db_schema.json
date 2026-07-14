@@ -1,0 +1,113 @@
+{
+  "models": {
+    "users": [
+      {
+        "name": "id",
+        "type": "UUID",
+        "primary_key": true,
+        "nullable": false,
+        "default": "<function uuid4 at 0x000001F063636FB0>",
+        "unique": null
+      },
+      {
+        "name": "email",
+        "type": "VARCHAR",
+        "primary_key": false,
+        "nullable": false,
+        "default": null,
+        "unique": true
+      },
+      {
+        "name": "hashed_password",
+        "type": "VARCHAR",
+        "primary_key": false,
+        "nullable": false,
+        "default": null,
+        "unique": null
+      },
+      {
+        "name": "first_name",
+        "type": "VARCHAR",
+        "primary_key": false,
+        "nullable": false,
+        "default": null,
+        "unique": null
+      },
+      {
+        "name": "last_name",
+        "type": "VARCHAR",
+        "primary_key": false,
+        "nullable": false,
+        "default": null,
+        "unique": null
+      },
+      {
+        "name": "role",
+        "type": "VARCHAR",
+        "primary_key": false,
+        "nullable": false,
+        "default": "student",
+        "unique": null
+      },
+      {
+        "name": "plan_tier",
+        "type": "VARCHAR",
+        "primary_key": false,
+        "nullable": false,
+        "default": "free",
+        "unique": null
+      },
+      {
+        "name": "is_active",
+        "type": "BOOLEAN",
+        "primary_key": false,
+        "nullable": true,
+        "default": "True",
+        "unique": null
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "primary_key": false,
+        "nullable": true,
+        "default": null,
+        "unique": null
+      },
+      {
+        "name": "is_verified",
+        "type": "BOOLEAN",
+        "primary_key": false,
+        "nullable": false,
+        "default": "False",
+        "unique": null
+      },
+      {
+        "name": "verification_code",
+        "type": "VARCHAR",
+        "primary_key": false,
+        "nullable": true,
+        "default": null,
+        "unique": null
+      },
+      {
+        "name": "code_expires_at",
+        "type": "DATETIME",
+        "primary_key": false,
+        "nullable": true,
+        "default": null,
+        "unique": null
+      },
+      {
+        "name": "failed_verify_attempts",
+        "type": "INTEGER",
+        "primary_key": false,
+        "nullable": false,
+        "default": "0",
+        "unique": null
+      }
+    ]
+  },
+  "migration_history": [
+    "Alembic history not found or Alembic not yet initialized."
+  ]
+}

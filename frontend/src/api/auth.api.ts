@@ -11,6 +11,13 @@
  *  - Throw ApiError on any non-2xx response. Callers handle the error.
  *  - All types imported from @/types/auth.types.
  *
+ * PHASE 2 CHANGES:
+ *  - All fetch() calls include `credentials: "include"` so the browser
+ *    automatically sends the HttpOnly auth cookie on every request.
+ *  - loginRequest() no longer returns { access_token }. JWT is in Set-Cookie.
+ *  - getMeRequest() no longer accepts an accessToken parameter.
+ *  - 3 new functions: verifyCodeRequest, resendCodeRequest, logoutRequest.
+ *
  * Backend base URL is read from the NEXT_PUBLIC_API_BASE_URL environment variable.
  * Set this in frontend/.env.local for local development:
  *   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
@@ -18,9 +25,11 @@
 
 import type {
   LoginCredentials,
-  Token,
+  MessageResponse,
+  ResendCodeRequest,
   UserCreate,
   UserResponse,
+  VerifyCodeRequest,
   ApiErrorShape,
   HTTPValidationError,
 } from "@/types/auth.types";
@@ -32,7 +41,6 @@ import type {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 if (!API_BASE) {
-  // Fail loudly at module load time so misconfiguration is caught immediately.
   throw new Error(
     "[auth.api] NEXT_PUBLIC_API_BASE_URL is not set. " +
       "Add it to frontend/.env.local: NEXT_PUBLIC_API_BASE_URL=http://localhost:8000"
@@ -63,10 +71,6 @@ export class ApiError extends Error {
 // Internal Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Parses a non-2xx Response into a typed ApiError.
- * Attempts JSON parse; falls back to status text on failure.
- */
 async function parseErrorResponse(res: Response): Promise<ApiError> {
   let message = `HTTP ${res.status}: ${res.statusText}`;
   let detail: HTTPValidationError["detail"] | undefined;
@@ -78,7 +82,6 @@ async function parseErrorResponse(res: Response): Promise<ApiError> {
     if (typeof body.detail === "string") {
       message = body.detail;
     } else if (Array.isArray(body.detail)) {
-      // 422 Pydantic validation error — extract human-readable message from first error.
       detail = body.detail;
       message = body.detail.map((e) => `${e.loc.join(".")}: ${e.msg}`).join("; ");
     }
@@ -95,24 +98,17 @@ async function parseErrorResponse(res: Response): Promise<ApiError> {
 
 /**
  * Registers a new user account.
- *
- * @param data - UserCreate payload (email, first_name, last_name, password)
- * @returns    - UserResponse on 201 Created
- * @throws     - ApiError on 422 (validation) or other non-2xx
+ * Response includes is_verified: false — frontend should redirect to /verify-pending.
  */
 export async function signupRequest(data: UserCreate): Promise<UserResponse> {
   const res = await fetch(`${API_BASE}/api/v1/auth/signup`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    credentials: "include",   // Sends/receives cookies cross-origin
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 
-  if (!res.ok) {
-    throw await parseErrorResponse(res);
-  }
-
+  if (!res.ok) throw await parseErrorResponse(res);
   return res.json() as Promise<UserResponse>;
 }
 
@@ -121,39 +117,28 @@ export async function signupRequest(data: UserCreate): Promise<UserResponse> {
 // ---------------------------------------------------------------------------
 
 /**
- * Authenticates a user and returns a JWT access token.
+ * Authenticates a user.
+ * JWT is set in an HttpOnly cookie by the server (Set-Cookie header).
+ * The response body contains only { message } — NOT a token.
  *
- * CRITICAL: This endpoint uses OAuth2 Password Bearer and expects
- * `application/x-www-form-urlencoded`, NOT application/json.
- * The email address MUST be sent as the `username` field per OAuth2 spec.
- *
- * @param credentials - { username: email, password }
- * @returns           - Token on 200 OK  { access_token, token_type }
- * @throws            - ApiError(401) on wrong credentials
- * @throws            - ApiError(422) on malformed payload
+ * After login, call getMeRequest() to hydrate user state.
  */
-export async function loginRequest(credentials: LoginCredentials): Promise<Token> {
-  // URLSearchParams serializes to application/x-www-form-urlencoded automatically.
+export async function loginRequest(credentials: LoginCredentials): Promise<MessageResponse> {
   const body = new URLSearchParams({
-    username: credentials.username, // Maps to the user's email address.
+    username: credentials.username,
     password: credentials.password,
-    grant_type: "password",         // Required by OAuth2 Password flow.
+    grant_type: "password",
   });
 
   const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
-    headers: {
-      // Explicitly set. URLSearchParams body does NOT auto-set this in all environments.
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    credentials: "include",   // Browser stores the Set-Cookie from the response
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
 
-  if (!res.ok) {
-    throw await parseErrorResponse(res);
-  }
-
-  return res.json() as Promise<Token>;
+  if (!res.ok) throw await parseErrorResponse(res);
+  return res.json() as Promise<MessageResponse>;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,23 +147,82 @@ export async function loginRequest(credentials: LoginCredentials): Promise<Token
 
 /**
  * Fetches the authenticated user's profile.
- * Requires a valid JWT access token passed as a Bearer token.
- *
- * @param accessToken - JWT string obtained from loginRequest()
- * @returns           - UserResponse on 200 OK
- * @throws            - ApiError(401) if token is missing, expired, or invalid
+ * NO accessToken parameter — the browser sends the HttpOnly cookie automatically.
+ * credentials: "include" is required for the cookie to be attached cross-origin.
  */
-export async function getMeRequest(accessToken: string): Promise<UserResponse> {
+export async function getMeRequest(): Promise<UserResponse> {
   const res = await fetch(`${API_BASE}/api/v1/users/me`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    credentials: "include",
   });
 
-  if (!res.ok) {
-    throw await parseErrorResponse(res);
-  }
-
+  if (!res.ok) throw await parseErrorResponse(res);
   return res.json() as Promise<UserResponse>;
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: POST /api/v1/auth/verify
+// ---------------------------------------------------------------------------
+
+/**
+ * Submits the 6-digit OTP to verify the user's email address.
+ * On success, the backend marks the user as verified (is_verified=true).
+ *
+ * @param data - { email, code }
+ * @throws ApiError(400) on wrong/expired code
+ * @throws ApiError(429) on brute-force lockout (5 failed attempts)
+ */
+export async function verifyCodeRequest(data: VerifyCodeRequest): Promise<MessageResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/verify`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) throw await parseErrorResponse(res);
+  return res.json() as Promise<MessageResponse>;
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: POST /api/v1/auth/resend-code
+// ---------------------------------------------------------------------------
+
+/**
+ * Requests a fresh 6-digit OTP email.
+ * Rate-limited server-side to 1 request per minute per IP.
+ * Frontend should also enforce a 60-second cooldown on the button.
+ *
+ * @param data - { email }
+ * @throws ApiError(429) if called more than once per minute
+ */
+export async function resendCodeRequest(data: ResendCodeRequest): Promise<MessageResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/resend-code`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) throw await parseErrorResponse(res);
+  return res.json() as Promise<MessageResponse>;
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: POST /api/v1/auth/logout
+// ---------------------------------------------------------------------------
+
+/**
+ * Clears the HttpOnly auth cookie server-side.
+ * HttpOnly cookies cannot be deleted by JavaScript — this endpoint is required.
+ * After calling this, getMeRequest() will return 401.
+ */
+export async function logoutRequest(): Promise<MessageResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!res.ok) throw await parseErrorResponse(res);
+  return res.json() as Promise<MessageResponse>;
 }

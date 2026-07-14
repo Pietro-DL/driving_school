@@ -3,20 +3,18 @@
 /**
  * components/ProtectedRoute.tsx
  *
- * Wrapper component that guards routes requiring authentication.
+ * Wrapper component that guards routes requiring authentication AND verification.
  *
- * Behaviour:
- *  - isLoading = true  → show a full-screen spinner (auth state not settled yet)
- *  - user = null       → redirect to /login (not authenticated)
- *  - user exists       → render children (authenticated)
+ * Behaviour (3-tier guard):
+ *  - isLoading = true         → show spinner (auth state not settled)
+ *  - user = null              → redirect to /login (not authenticated)
+ *  - user.is_verified = false → redirect to /verify-pending (not verified)
+ *  - user exists + verified   → render children
  *
  * Usage:
  *   <ProtectedRoute>
  *     <Dashboard />
  *   </ProtectedRoute>
- *
- * IMPORTANT: This is a client component. Wrap it server-side in page.tsx
- * which itself has no "use client" directive.
  */
 
 import { useEffect, type ReactNode } from "react";
@@ -75,20 +73,25 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
 
   useEffect(() => {
-    // Only redirect once the loading state has settled.
-    // isLoading guards against flashing a redirect on the initial render.
-    if (!isLoading && !user) {
+    if (isLoading) return; // Don't redirect until auth state has settled
+
+    if (!user) {
+      // Not authenticated at all
       router.replace("/login");
+      return;
+    }
+
+    if (!user.is_verified) {
+      // Authenticated but email not verified — bounce to OTP page
+      router.replace("/verify-pending");
     }
   }, [user, isLoading, router]);
 
-  // While loading: show spinner (e.g. during login async operation).
   if (isLoading) return <FullPageSpinner />;
 
-  // Not authenticated and not loading: return null while the redirect fires.
-  // Avoids a flash of the protected content before the router.replace completes.
-  if (!user) return null;
+  // Not authenticated or not verified: return null while redirect fires
+  if (!user || !user.is_verified) return null;
 
-  // Authenticated: render children.
+  // Fully authenticated and verified: render the protected content
   return <>{children}</>;
 }

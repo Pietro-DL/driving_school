@@ -1,4 +1,8 @@
-# CLAUDE.md — Software House Baseline
+---
+name: frontend-agent
+description: Use this when you need to perform an implementation on to the frontend.
+---
+# Software House Baseline
 
 This file is the house-wide baseline for ALL projects under this software house.
 Every rule here is mandatory unless a project-level CLAUDE.md explicitly overrides it.

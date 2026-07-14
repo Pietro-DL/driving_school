@@ -11,7 +11,7 @@
           "Authentication"
         ],
         "summary": "Signup",
-        "description": "Register a brand new user.",
+        "description": "Register a new user account.\n\nFlow:\n  1. Creates the user (unverified) with a hashed OTP.\n  2. Fires the verification email as a BackgroundTask (response is instant).\n  3. Returns 201 with the user profile (is_verified=false).\n\nFrontend: After 201, redirect to /verify-pending.",
         "operationId": "signup_api_v1_auth_signup_post",
         "requestBody": {
           "content": {
@@ -53,7 +53,7 @@
           "Authentication"
         ],
         "summary": "Login",
-        "description": "Standard OAuth2 compatible token login.\nExpects form-data with fields: 'username' (which is the email) and 'password'.",
+        "description": "Authenticate a user and set an HttpOnly JWT cookie.\n\nExpects application/x-www-form-urlencoded with fields: username (email) and password.\n\nToken delivery: HttpOnly cookie (XSS-safe). NOT returned in the response body.\nSwagger /docs fallback: Bearer header still accepted by get_current_user.\n\nResponse body: { \"message\": \"Login successful\" }\nFrontend: call GET /users/me with credentials:'include' to hydrate user state.",
         "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -71,7 +71,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Token"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -87,6 +87,117 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/auth/verify": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Verify Email",
+        "description": "Verify a user's email address with a 6-digit OTP.\n\nSecurity:\n  - Brute-force lockout: 5 failed attempts invalidate the code.\n  - Time-based expiry: code expires after 10 minutes.\n  - One-time use: code and expiry are cleared after successful verification.\n\nFrontend: On success, redirect to /dashboard (or call GET /users/me to refresh state).",
+        "operationId": "verify_email_api_v1_auth_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend-code": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Resend Code",
+        "description": "Generate a fresh OTP and re-send the verification email.\n\nRate limit: 1 request per minute per IP (prevents email spam).\nOverwrites the previous code \u2014 only one active OTP per user at any time.\nResets the failed_verify_attempts counter.",
+        "operationId": "resend_code_api_v1_auth_resend_code_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Logout",
+        "description": "Clear the HttpOnly auth cookie server-side.\n\nHttpOnly cookies cannot be deleted by JavaScript, so this endpoint is\nrequired for proper logout. The current_user dependency ensures only\nan authenticated session can trigger cookie deletion (prevents logout spam).",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
       }
     },
     "/api/v1/users/me": {
@@ -207,23 +318,34 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "Token": {
+      "MessageResponse": {
         "properties": {
-          "access_token": {
+          "message": {
             "type": "string",
-            "title": "Access Token"
-          },
-          "token_type": {
-            "type": "string",
-            "title": "Token Type"
+            "title": "Message"
           }
         },
         "type": "object",
         "required": [
-          "access_token",
-          "token_type"
+          "message"
         ],
-        "title": "Token"
+        "title": "MessageResponse",
+        "description": "Generic response for endpoints that don't return user data."
+      },
+      "ResendCodeRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ResendCodeRequest",
+        "description": "Payload for POST /auth/resend-code."
       },
       "UserCreate": {
         "properties": {
@@ -252,7 +374,8 @@
           "last_name",
           "password"
         ],
-        "title": "UserCreate"
+        "title": "UserCreate",
+        "description": "Payload for POST /auth/signup."
       },
       "UserResponse": {
         "properties": {
@@ -286,6 +409,10 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -301,9 +428,11 @@
           "role",
           "plan_tier",
           "is_active",
+          "is_verified",
           "created_at"
         ],
-        "title": "UserResponse"
+        "title": "UserResponse",
+        "description": "Full user profile returned to the client."
       },
       "ValidationError": {
         "properties": {
@@ -344,6 +473,26 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VerifyCodeRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "code"
+        ],
+        "title": "VerifyCodeRequest",
+        "description": "Payload for POST /auth/verify."
       }
     },
     "securitySchemes": {

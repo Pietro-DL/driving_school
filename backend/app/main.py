@@ -1,37 +1,56 @@
+# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.api.v1.router import api_router
-from app.db.session import engine
-from app.db.base_class import Base
-# Import the model to make sure it registers on the metadata object
-from app.models.user_model import User
+
+# Import models so Alembic env.py can discover them via Base.metadata
+from app.models.user_model import User  # noqa: F401
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"/openapi.json"
+    openapi_url="/openapi.json",
 )
 
-# Enable CORS so Stefano's frontend agent won't face network blocks later
+# ---------------------------------------------------------------------------
+# Rate limiting middleware (slowapi)
+# Attach limiter to app.state so @limiter.limit() decorators can find it.
+# ---------------------------------------------------------------------------
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ---------------------------------------------------------------------------
+# CORS hardening
+#
+# CRITICAL: allow_origins must NOT be ["*"] when allow_credentials=True.
+# Browsers silently drop Set-Cookie headers when both are set — this is a
+# browser security spec requirement (not a bug). CORS_ORIGINS is loaded
+# from settings, which reads from the .env file.
+# ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Adjust to specific domains for final production
-    allow_credentials=True,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,      # Required for HttpOnly cookies to work cross-origin
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def startup_event():
-    """On app execution, create the database tables automatically if they don't exist."""
-    async with engine.begin() as conn:
-        # Tables are constructed asynchronously
-        await conn.run_sync(Base.metadata.create_all)
-
-# Mount our route tree
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
 app.include_router(api_router, prefix="/api/v1")
+
 
 @app.get("/")
 def root_check():
     return {"status": "healthy", "message": "Driving School API operational"}
+
+# ---------------------------------------------------------------------------
+# NOTE: Base.metadata.create_all has been REMOVED.
+# Alembic now manages all schema changes via: `alembic upgrade head`
+# Run this command before starting the server in any environment.
+# ---------------------------------------------------------------------------

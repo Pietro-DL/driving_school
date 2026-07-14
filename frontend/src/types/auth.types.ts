@@ -67,6 +67,7 @@ export interface UserResponse {
   role: string;        // e.g. "student", "admin" — enum values defined by backend
   plan_tier: string;   // e.g. "free", "premium" — enum values defined by backend
   is_active: boolean;
+  is_verified: boolean; // false until OTP verified; frontend gates /dashboard on this
   created_at: string;  // format: date-time (ISO 8601)
 }
 
@@ -102,4 +103,35 @@ export interface ApiErrorShape {
   status: number;
   message: string;
   detail?: ValidationError[]; // Present if the backend returned 422 details
+}
+
+// ---------------------------------------------------------------------------
+// OTP VERIFICATION (new endpoints: /auth/verify, /auth/resend-code)
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors: schemas/VerifyCodeRequest
+ * Endpoint: POST /api/v1/auth/verify
+ * Content-Type: application/json
+ */
+export interface VerifyCodeRequest {
+  email: string;
+  code: string; // Raw 6-digit string entered by user
+}
+
+/**
+ * Mirrors: schemas/ResendCodeRequest
+ * Endpoint: POST /api/v1/auth/resend-code
+ * Content-Type: application/json
+ */
+export interface ResendCodeRequest {
+  email: string;
+}
+
+/**
+ * Mirrors: schemas/MessageResponse
+ * Returned by: /auth/login, /auth/verify, /auth/resend-code, /auth/logout
+ */
+export interface MessageResponse {
+  message: string;
 }

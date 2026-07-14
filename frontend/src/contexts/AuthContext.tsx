@@ -5,25 +5,18 @@
  *
  * React Context that holds the single, application-wide authentication state.
  *
- * WHY THIS FILE EXISTS:
- *   React hooks (useState) are local to the component that calls them.
- *   If LoginForm and ProtectedRoute each called `useAuth()` that contained
- *   its own useState, they would have completely isolated state — the token
- *   set by LoginForm would be invisible to ProtectedRoute.
+ * PHASE 2 CHANGES:
+ *  - `token` field removed from state. JWT lives in an HttpOnly cookie
+ *    managed by the browser. JavaScript has no access to it.
+ *  - login() flow: loginRequest() → getMeRequest() → check is_verified
+ *    → redirect to /dashboard or /verify-pending
+ *  - logout() is now async: calls logoutRequest() to clear the server cookie.
+ *  - New actions: verify() and resendCode() for the OTP flow.
+ *  - All fetch calls use credentials:'include' (handled in auth.api.ts).
  *
- *   The solution: lift the state up into a React Context Provider that wraps
- *   the entire app. Every component that calls `useAuth()` then reads from
- *   the same shared state instance.
- *
- * USAGE:
- *   - Wrap the app in <AuthProvider> inside app/layout.tsx.
- *   - Consume via the `useAuth` hook from @/hooks/useAuth.ts (thin wrapper).
- *   - Never import AuthContext or AuthProvider directly in components.
- *     Always go through `useAuth`.
- *
- * JWT STORAGE — Phase 1:
- *   Token lives in React state (in-memory). Lost on page refresh.
- *   Phase 2: migrate to HttpOnly cookie (requires backend Set-Cookie header).
+ * JWT STORAGE — Phase 2:
+ *   Token lives in an HttpOnly cookie set by the backend /login endpoint.
+ *   Browser sends it automatically on every request. XSS cannot steal it.
  */
 
 import {
@@ -38,19 +31,25 @@ import {
   loginRequest,
   signupRequest,
   getMeRequest,
+  verifyCodeRequest,
+  resendCodeRequest,
+  logoutRequest,
   ApiError,
 } from "@/api/auth.api";
-import type { UserResponse, UserCreate } from "@/types/auth.types";
+import type {
+  UserResponse,
+  UserCreate,
+  VerifyCodeRequest,
+  ResendCodeRequest,
+} from "@/types/auth.types";
 
 // ---------------------------------------------------------------------------
-// Public types (re-exported so hooks/useAuth.ts and consumers can import them)
+// Public types
 // ---------------------------------------------------------------------------
 
 export interface AuthState {
   /** Authenticated user profile. Null = not logged in. */
   user: UserResponse | null;
-  /** JWT access token in memory. Null = not logged in. */
-  token: string | null;
   /** True while any async auth operation is in flight. */
   isLoading: boolean;
   /** Italian-language error message for the UI. Null = no error. */
@@ -60,7 +59,9 @@ export interface AuthState {
 export interface UseAuthReturn extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   signup: (data: UserCreate) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  verify: (data: VerifyCodeRequest) => Promise<void>;
+  resendCode: (data: ResendCodeRequest) => Promise<void>;
   clearError: () => void;
 }
 
@@ -77,10 +78,17 @@ const AuthContext = createContext<UseAuthReturn | null>(null);
 function toItalianErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     switch (err.status) {
+      case 400:
+        return err.message || "Richiesta non valida. Controlla i dati inseriti.";
       case 401:
         return "Credenziali non valide. Controlla email e password.";
       case 403:
+        if (err.message.toLowerCase().includes("verified")) {
+          return "Email non verificata. Controlla la tua casella di posta.";
+        }
         return "Accesso negato. Non hai i permessi necessari.";
+      case 404:
+        return "Nessun account trovato con questo indirizzo email.";
       case 409:
         return "Questo indirizzo email è già registrato.";
       case 422:
@@ -88,6 +96,8 @@ function toItalianErrorMessage(err: unknown): string {
           return `Errore di validazione: ${err.detail[0].msg}`;
         }
         return "I dati inseriti non sono validi. Controlla il modulo.";
+      case 429:
+        return "Troppi tentativi. Attendi un minuto e riprova.";
       case 500:
         return "Errore del server. Riprova tra qualche minuto.";
       default:
@@ -98,37 +108,40 @@ function toItalianErrorMessage(err: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// Provider — holds the single shared auth state for the whole app
+// Provider
 // ---------------------------------------------------------------------------
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const [user, setUser] = useState<UserResponse | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
 
   /**
-   * Authenticates the user.
-   * Flow: loginRequest → getMeRequest → setUser/setToken → push(/dashboard)
+   * Login flow:
+   *  1. POST /auth/login  → sets HttpOnly cookie (no token in body)
+   *  2. GET  /users/me    → hydrates user state from the new cookie
+   *  3. Check is_verified → route to /dashboard or /verify-pending
    */
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
       setIsLoading(true);
       setError(null);
       try {
-        const tokenResponse = await loginRequest({ username: email, password });
-        const accessToken = tokenResponse.access_token;
-        const userProfile = await getMeRequest(accessToken);
-        setToken(accessToken);
+        await loginRequest({ username: email, password });
+        const userProfile = await getMeRequest();
         setUser(userProfile);
-        router.push("/dashboard");
+
+        if (!userProfile.is_verified) {
+          router.push("/verify-pending");
+        } else {
+          router.push("/dashboard");
+        }
       } catch (err) {
         setError(toItalianErrorMessage(err));
-        setToken(null);
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -138,9 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Registers a new user.
-   * Flow: signupRequest → push(/login?registered=true)
-   * User is NOT auto-logged-in after signup.
+   * Signup flow:
+   *  POST /auth/signup → redirect to /verify-pending
+   *  User is NOT auto-logged-in. They must verify email first.
    */
   const signup = useCallback(
     async (data: UserCreate): Promise<void> => {
@@ -148,7 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null);
       try {
         await signupRequest(data);
-        router.push("/login?registered=true");
+        // Pass email in URL so /verify-pending can display it and call resend-code
+        router.push(`/verify-pending?email=${encodeURIComponent(data.email)}`);
       } catch (err) {
         setError(toItalianErrorMessage(err));
       } finally {
@@ -159,24 +173,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Clears auth state and redirects to /login.
-   * Synchronous — no network call (JWT invalidation is server-side future work).
+   * Logout flow:
+   *  POST /auth/logout → server clears the HttpOnly cookie
+   *  Client clears user state and navigates to /login.
    */
-  const logout = useCallback(() => {
-    setToken(null);
-    setUser(null);
-    setError(null);
-    router.push("/login");
+  const logout = useCallback(async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      await logoutRequest();
+    } catch {
+      // Even if the request fails, clear local state and redirect.
+    } finally {
+      setUser(null);
+      setError(null);
+      setIsLoading(false);
+      router.push("/login");
+    }
   }, [router]);
+
+  /**
+   * OTP verify flow:
+   *  POST /auth/verify → on success, refresh user state (is_verified now true)
+   *  → redirect to /dashboard
+   */
+  const verify = useCallback(
+    async (data: VerifyCodeRequest): Promise<void> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await verifyCodeRequest(data);
+        // Refresh user profile — is_verified is now true server-side
+        const updatedUser = await getMeRequest();
+        setUser(updatedUser);
+        router.push("/dashboard");
+      } catch (err) {
+        setError(toItalianErrorMessage(err));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [router]
+  );
+
+  /**
+   * Resend OTP flow:
+   *  POST /auth/resend-code → server generates new code + sends email
+   *  UI handles the 60-second cooldown on the button.
+   */
+  const resendCode = useCallback(
+    async (data: ResendCodeRequest): Promise<void> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await resendCodeRequest(data);
+      } catch (err) {
+        setError(toItalianErrorMessage(err));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   const value: UseAuthReturn = {
     user,
-    token,
     isLoading,
     error,
     login,
     signup,
     logout,
+    verify,
+    resendCode,
     clearError,
   };
 
@@ -184,14 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// Hook — the only way components should access auth state
+// Hook
 // ---------------------------------------------------------------------------
 
-/**
- * Returns the shared auth state and actions.
- * Must be used inside a component tree wrapped by <AuthProvider>.
- * Throws if called outside the provider (dev-time safety net).
- */
 export function useAuth(): UseAuthReturn {
   const ctx = useContext(AuthContext);
   if (!ctx) {
