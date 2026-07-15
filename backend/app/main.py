@@ -1,5 +1,6 @@
 # backend/app/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
@@ -54,3 +55,11 @@ def root_check():
 # Alembic now manages all schema changes via: `alembic upgrade head`
 # Run this command before starting the server in any environment.
 # ---------------------------------------------------------------------------
+@app.get("/health", status_code=status.HTTP_200_OK, tags=["Health"])
+@app.head("/health", status_code=status.HTTP_200_OK, tags=["Health"])
+async def health_check():
+    """
+    Endpoint for Uptime monitors. 
+    Returns a 200 OK for GET and HEAD requests.
+    """
+    return JSONResponse(content={"status": "healthy", "service": "backend"})
