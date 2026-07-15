@@ -3,7 +3,9 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.core.config import settings
 
 # Create the async engine
-engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, echo=True)
+# echo is controlled by DB_ECHO env var. MUST be False in production
+# to avoid logging PII (email in WHERE clauses) and performance cost.
+engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, echo=settings.DB_ECHO)
 
 # Create a session factory
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)

@@ -1,510 +1,547 @@
-{
-  "openapi": "3.1.0",
-  "info": {
-    "title": "Driving School Local Test",
-    "version": "0.1.0"
-  },
-  "paths": {
-    "/api/v1/auth/signup": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Signup",
-        "description": "Register a new user account.\n\nFlow:\n  1. Creates the user (unverified) with a hashed OTP.\n  2. Fires the verification email as a BackgroundTask (response is instant).\n  3. Returns 201 with the user profile (is_verified=false).\n\nFrontend: After 201, redirect to /verify-pending.",
-        "operationId": "signup_api_v1_auth_signup_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
+﻿{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Driving School API",
+        "version": "0.1.0"
     },
-    "/api/v1/auth/login": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Login",
-        "description": "Authenticate a user and set an HttpOnly JWT cookie.\n\nExpects application/x-www-form-urlencoded with fields: username (email) and password.\n\nToken delivery: HttpOnly cookie (XSS-safe). NOT returned in the response body.\nSwagger /docs fallback: Bearer header still accepted by get_current_user.\n\nResponse body: { \"message\": \"Login successful\" }\nFrontend: call GET /users/me with credentials:'include' to hydrate user state.",
-        "operationId": "login_api_v1_auth_login_post",
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_login_api_v1_auth_login_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/verify": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Verify Email",
-        "description": "Verify a user's email address with a 6-digit OTP.\n\nSecurity:\n  - Brute-force lockout: 5 failed attempts invalidate the code.\n  - Time-based expiry: code expires after 10 minutes.\n  - One-time use: code and expiry are cleared after successful verification.\n\nFrontend: On success, redirect to /dashboard (or call GET /users/me to refresh state).",
-        "operationId": "verify_email_api_v1_auth_verify_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyCodeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/resend-code": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Resend Code",
-        "description": "Generate a fresh OTP and re-send the verification email.\n\nRate limit: 1 request per minute per IP (prevents email spam).\nOverwrites the previous code \u2014 only one active OTP per user at any time.\nResets the failed_verify_attempts counter.",
-        "operationId": "resend_code_api_v1_auth_resend_code_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResendCodeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/logout": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Logout",
-        "description": "Clear the HttpOnly auth cookie server-side.\n\nHttpOnly cookies cannot be deleted by JavaScript, so this endpoint is\nrequired for proper logout. The current_user dependency ensures only\nan authenticated session can trigger cookie deletion (prevents logout spam).",
-        "operationId": "logout_api_v1_auth_logout_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/users/me": {
-      "get": {
-        "tags": [
-          "Users"
-        ],
-        "summary": "Read Users Me",
-        "description": "Protected route. Returns the profile of the currently logged-in user.\nIf the JWT is missing, expired, or invalid, this will return a 401.",
-        "operationId": "read_users_me_api_v1_users_me_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/": {
-      "get": {
-        "summary": "Root Check",
-        "operationId": "root_check__get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "Body_login_api_v1_auth_login_post": {
-        "properties": {
-          "grant_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^password$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Grant Type"
-          },
-          "username": {
-            "type": "string",
-            "title": "Username"
-          },
-          "password": {
-            "type": "string",
-            "format": "password",
-            "title": "Password"
-          },
-          "scope": {
-            "type": "string",
-            "title": "Scope",
-            "default": ""
-          },
-          "client_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Client Id"
-          },
-          "client_secret": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "format": "password",
-            "title": "Client Secret"
-          }
-        },
-        "type": "object",
-        "required": [
-          "username",
-          "password"
-        ],
-        "title": "Body_login_api_v1_auth_login_post"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
-      "MessageResponse": {
-        "properties": {
-          "message": {
-            "type": "string",
-            "title": "Message"
-          }
-        },
-        "type": "object",
-        "required": [
-          "message"
-        ],
-        "title": "MessageResponse",
-        "description": "Generic response for endpoints that don't return user data."
-      },
-      "ResendCodeRequest": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email"
-        ],
-        "title": "ResendCodeRequest",
-        "description": "Payload for POST /auth/resend-code."
-      },
-      "UserCreate": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "first_name": {
-            "type": "string",
-            "title": "First Name"
-          },
-          "last_name": {
-            "type": "string",
-            "title": "Last Name"
-          },
-          "password": {
-            "type": "string",
-            "title": "Password"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email",
-          "first_name",
-          "last_name",
-          "password"
-        ],
-        "title": "UserCreate",
-        "description": "Payload for POST /auth/signup."
-      },
-      "UserResponse": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "first_name": {
-            "type": "string",
-            "title": "First Name"
-          },
-          "last_name": {
-            "type": "string",
-            "title": "Last Name"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "role": {
-            "type": "string",
-            "title": "Role"
-          },
-          "plan_tier": {
-            "type": "string",
-            "title": "Plan Tier"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active"
-          },
-          "is_verified": {
-            "type": "boolean",
-            "title": "Is Verified"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email",
-          "first_name",
-          "last_name",
-          "id",
-          "role",
-          "plan_tier",
-          "is_active",
-          "is_verified",
-          "created_at"
-        ],
-        "title": "UserResponse",
-        "description": "Full user profile returned to the client."
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
+    "paths": {
+        "/api/v1/auth/signup": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Signup",
+                "description": "Register a new user account.\n\nFlow:\n  1. Creates the user (unverified) with a hashed OTP.\n  2. Fires the verification email as a BackgroundTask (response is instant).\n  3. Returns 201 with the user profile (is_verified=false).\n\nFrontend: After 201, redirect to /verify-pending.",
+                "operationId": "signup_api_v1_auth_signup_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserCreate"
+                            }
+                        }
+                    },
+                    "required": true
                 },
-                {
-                  "type": "integer"
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
                 }
-              ]
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Login",
+                "description": "Authenticate a user and set an HttpOnly JWT cookie.\n\nExpects application/x-www-form-urlencoded with fields: username (email) and password.\n\nToken delivery: HttpOnly cookie (XSS-safe). NOT returned in the response body.\nSwagger /docs fallback: Bearer header still accepted by get_current_user.\n\nResponse body: { \"message\": \"Login successful\" }\nFrontend: call GET /users/me with credentials:'include' to hydrate user state.",
+                "operationId": "login_api_v1_auth_login_post",
+                "requestBody": {
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_login_api_v1_auth_login_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MessageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/verify": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Verify Email",
+                "description": "Verify a user's email address with a 6-digit OTP.\n\nSecurity:\n  - Brute-force lockout: 5 failed attempts invalidate the code.\n  - Time-based expiry: code expires after 10 minutes.\n  - One-time use: code and expiry are cleared after successful verification.\n\nFrontend: On success, redirect to /dashboard (or call GET /users/me to refresh state).",
+                "operationId": "verify_email_api_v1_auth_verify_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerifyCodeRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MessageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/resend-code": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Resend Code",
+                "operationId": "resend_code_api_v1_auth_resend_code_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResendCodeRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MessageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Logout",
+                "description": "Clear the HttpOnly auth cookie server-side.\n\nHttpOnly cookies cannot be deleted by JavaScript, so this endpoint is\nrequired for proper logout. The current_user dependency ensures only\nan authenticated session can trigger cookie deletion (prevents logout spam).",
+                "operationId": "logout_api_v1_auth_logout_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MessageResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2PasswordBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/users/me": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Read Users Me",
+                "description": "Protected route. Returns the profile of the currently logged-in user.\nIf the JWT is missing, expired, or invalid, this will return a 401.",
+                "operationId": "read_users_me_api_v1_users_me_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2PasswordBearer": []
+                    }
+                ]
+            }
+        },
+        "/": {
+            "get": {
+                "summary": "Root Check",
+                "operationId": "root_check__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health Check",
+                "description": "Endpoint for Uptime monitors. \nReturns a 200 OK for GET and HEAD requests.",
+                "operationId": "health_check_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
             },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
-      },
-      "VerifyCodeRequest": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "code": {
-            "type": "string",
-            "title": "Code"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email",
-          "code"
-        ],
-        "title": "VerifyCodeRequest",
-        "description": "Payload for POST /auth/verify."
-      }
-    },
-    "securitySchemes": {
-      "OAuth2PasswordBearer": {
-        "type": "oauth2",
-        "flows": {
-          "password": {
-            "scopes": {},
-            "tokenUrl": "api/v1/auth/login"
-          }
+            "head": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health Check",
+                "description": "Endpoint for Uptime monitors. \nReturns a 200 OK for GET and HEAD requests.",
+                "operationId": "health_check_health_head",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
         }
-      }
+    },
+    "components": {
+        "schemas": {
+            "Body_login_api_v1_auth_login_post": {
+                "properties": {
+                    "grant_type": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "pattern": "^password$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Grant Type"
+                    },
+                    "username": {
+                        "type": "string",
+                        "title": "Username"
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Password"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "title": "Scope",
+                        "default": ""
+                    },
+                    "client_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Client Id"
+                    },
+                    "client_secret": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "format": "password",
+                        "title": "Client Secret"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "username",
+                    "password"
+                ],
+                "title": "Body_login_api_v1_auth_login_post"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "MessageResponse": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "message"
+                ],
+                "title": "MessageResponse",
+                "description": "Generic response for endpoints that don't return user data."
+            },
+            "ResendCodeRequest": {
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "title": "Email"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "email"
+                ],
+                "title": "ResendCodeRequest",
+                "description": "Payload for POST /auth/resend-code."
+            },
+            "UserCreate": {
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "title": "Email"
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "title": "First Name"
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "title": "Last Name"
+                    },
+                    "password": {
+                        "type": "string",
+                        "title": "Password"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "password"
+                ],
+                "title": "UserCreate",
+                "description": "Payload for POST /auth/signup."
+            },
+            "UserResponse": {
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "title": "Email"
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "title": "First Name"
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "title": "Last Name"
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role"
+                    },
+                    "plan_tier": {
+                        "type": "string",
+                        "title": "Plan Tier"
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "title": "Is Active"
+                    },
+                    "is_verified": {
+                        "type": "boolean",
+                        "title": "Is Verified"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "id",
+                    "role",
+                    "plan_tier",
+                    "is_active",
+                    "is_verified",
+                    "created_at"
+                ],
+                "title": "UserResponse",
+                "description": "Full user profile returned to the client."
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            },
+            "VerifyCodeRequest": {
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "title": "Email"
+                    },
+                    "code": {
+                        "type": "string",
+                        "title": "Code"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "email",
+                    "code"
+                ],
+                "title": "VerifyCodeRequest",
+                "description": "Payload for POST /auth/verify."
+            }
+        },
+        "securitySchemes": {
+            "OAuth2PasswordBearer": {
+                "type": "oauth2",
+                "flows": {
+                    "password": {
+                        "scopes": {},
+                        "tokenUrl": "api/v1/auth/login"
+                    }
+                }
+            }
+        }
     }
-  }
 }

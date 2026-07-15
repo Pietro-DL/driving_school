@@ -1,17 +1,32 @@
 # backend\app\core\README.md
-In this file we are going to compact the content of the directory "backend\app\core".
-This directory contains all the files that are used to configure the application and to secure the application.
+
+This directory contains all files for application configuration, security utilities, authentication dependencies, and rate limiting.
 
 ## File Glossary & Breakdown
-- `backend\app\core\config.py`
-  This is a Python file that is used to configure the application. It is a singleton class that is used to store the configuration of the application.
-- `backend\app\core\security.py`
-  This is a Python file that is used to secure the application. 
-  Inside this file we have the following methods:
-  - verify_password: This method is used to verify the password.
-  - get_password_hash: This method is used to hash the password.
-  - create_access_token: This method is used to create the access token.
-- `backend/app/core/dependencies.py`
-  This file will contain a function named get_current_user. Every time you want an endpoint to be private (like a driving lesson or a user profile), you will inject this dependency.
-  - **What it does:** It intercepts the incoming HTTP request, extracts the Authorization: Bearer <token> header, decodes it using your SECRET_KEY, and fetches the user from the database. If the token is fake or expired, it throws a 401 Unauthorized error.
 
+### `config.py`
+Pydantic `BaseSettings` singleton. Loads all environment variables from `.env`. Sections:
+- **Database:** `SQLALCHEMY_DATABASE_URI`, `DB_ECHO` (default False — must stay False in prod to avoid PII leakage).
+- **Security / JWT:** `SECRET_KEY`, `ALGORITHM` (HS256), `ACCESS_TOKEN_EXPIRE_MINUTES` (7 days).
+- **OTP:** `OTP_EXPIRE_MINUTES` (10), `OTP_MAX_ATTEMPTS` (5 failures before invalidation).
+- **Email (SMTP):** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAILS_FROM_EMAIL`, `EMAILS_FROM_NAME`.
+- **CORS:** `CORS_ORIGINS` (JSON array from env). Must NOT be `["*"]` when `allow_credentials=True`.
+- **Cookie:** `COOKIE_SECURE` (True in prod for HTTPS), `COOKIE_DOMAIN`.
+
+### `security.py`
+Cryptographic utilities. All use `passlib[bcrypt]` via a shared `CryptContext`:
+- `verify_password(plain, hashed)` — Compares login password against stored hash.
+- `get_password_hash(password)` — Hashes password for storage.
+- `generate_6_digit_code()` — CSPRNG-backed OTP via `secrets.randbelow()`.
+- `hash_verification_code(code)` — Bcrypt-hashes the raw OTP before storing.
+- `verify_otp_code(plain_code, hashed_code)` — Constant-time bcrypt comparison for OTP verification.
+- `create_access_token(subject, role, plan_tier)` — Generates signed JWT with `sub`, `role`, `plan`, `exp` claims.
+
+### `dependencies.py`
+FastAPI dependency injection functions for authentication:
+- `_extract_token(request, bearer_token)` — Dual-mode token extraction. Checks HttpOnly cookie first (production flow), falls back to `Authorization: Bearer` header (Swagger /docs fallback).
+- `get_current_user(request, bearer_token, db)` — Decodes JWT, fetches User from DB. Does NOT check `is_verified`. Use for endpoints that unverified users need (e.g., `/users/me`).
+- `get_current_verified_user(current_user)` — Stricter dependency. User must be authenticated AND email-verified. Use on all business endpoints (lessons, payments, quizzes).
+
+### `limiter.py`
+Centralized `slowapi.Limiter` instance. Defined here (not in `main.py`) to avoid circular imports. Endpoint modules import and decorate with `@limiter.limit(...)`. Storage: in-memory (resets on restart). Redis planned for multi-instance deployments.

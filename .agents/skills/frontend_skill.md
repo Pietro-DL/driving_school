@@ -35,6 +35,7 @@ When generating code, you must scale your documentation updates to the "blast ra
 - **Tier 3: Architectural / UX Overhauls** (e.g., changing the routing flow, adding a new user role, shifting how JWTs are stored)
   - *Action:* Perform a cascading update. You must update the global `Architecture.md`, the `frontend/README.md`, and all touched feature/component READMEs to reflect the new paradigm.
 - **Mandatory Assessment:** Before concluding any task, output a brief "Documentation Impact Assessment" stating which Tier the change falls under and listing the exact `README.md` files you modified.
+- **Documnentation Audit**: Periodically run an audit of all `README.md`files to ensure they are up to date and accurate. Use a dedicated skill for this purpose. Do this if asked to review the code too
 
 ## Definition of done
 

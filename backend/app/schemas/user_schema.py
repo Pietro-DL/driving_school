@@ -1,5 +1,5 @@
 # backend/app/schemas/user_schema.py
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator
 from uuid import UUID
 from datetime import datetime
 
@@ -18,7 +18,17 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Payload for POST /auth/signup."""
-    password: str
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        """Enforce at least one uppercase letter and one digit."""
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit.")
+        return v
 
 class VerifyCodeRequest(BaseModel):
     """Payload for POST /auth/verify."""

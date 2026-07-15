@@ -50,6 +50,7 @@ When generating code, scale your documentation updates to the "blast radius" of 
 - **Tier 3: Architectural / Security Overhauls** (e.g., introducing Redis, migrating from local state JWTs to HttpOnly cookies, implementing global rate-limiting)
   - *Action:* Perform a cascading update. You must update the global `Architecture.md`, the `backend/app/README.md`, and all touched directory READMEs to reflect the new paradigm.
 - **Mandatory Assessment:** Before concluding any task, output a brief "Documentation Impact Assessment" stating which Tier the change falls under and listing the exact `README.md` files you modified.
+- **Documnentation Audit**: Periodically run an audit of all `README.md`files to ensure they are up to date and accurate. Use a dedicated skill for this purpose. Do this if asked to review the code too
 
 ## Definition of done
 A task is complete only when ALL of the following hold:

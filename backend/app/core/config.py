@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     # Database
     # ---------------------------------------------------------------------------
     SQLALCHEMY_DATABASE_URI: str
+    DB_ECHO: bool = False  # True = log every SQL statement. MUST be False in prod (PII risk).
 
     # ---------------------------------------------------------------------------
     # Security / JWT

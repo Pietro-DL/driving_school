@@ -162,6 +162,13 @@ async def resend_code(
     background_tasks: BackgroundTasks, # <-- Restore this
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Generate a fresh OTP and re-send the verification email.
+
+    Rate limit: 1 request per minute per IP (prevents email spam).
+    Overwrites the previous code — only one active OTP per user at any time.
+    Resets the failed_verify_attempts counter.
+    """
     user, raw_code = await auth_srv.regenerate_code(session=db, email=payload.email)
     
     # Revert to background task
