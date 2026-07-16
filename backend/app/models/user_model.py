@@ -1,9 +1,20 @@
 # backend/app/models/user_model.py
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, Integer
+from enum import Enum as PyEnum
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from app.db.base_class import Base
+
+class UserRole(str, PyEnum):
+    student = "student"
+    instructor = "instructor"
+    admin = "admin"
+
+class PlanTier(str, PyEnum):
+    free = "free"
+    basic = "basic"
+    premium = "premium"
 
 class User(Base):
     __tablename__ = "users"
@@ -13,8 +24,8 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
-    role = Column(String, default="student", nullable=False)
-    plan_tier = Column(String, default="free", nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.student, nullable=False)
+    plan_tier = Column(Enum(PlanTier), default=PlanTier.free, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

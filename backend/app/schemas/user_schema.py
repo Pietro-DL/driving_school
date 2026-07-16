@@ -2,6 +2,7 @@
 from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator
 from uuid import UUID
 from datetime import datetime
+from app.models.user_model import UserRole, PlanTier
 
 # ---------------------------------------------------------------------------
 # Shared base
@@ -46,8 +47,8 @@ class ResendCodeRequest(BaseModel):
 class UserResponse(UserBase):
     """Full user profile returned to the client."""
     id: UUID
-    role: str
-    plan_tier: str
+    role: UserRole
+    plan_tier: PlanTier
     is_active: bool
     is_verified: bool    # Frontend uses this to gate /verify-pending redirect
     created_at: datetime
@@ -67,6 +68,6 @@ class Token(BaseModel):
     token_type: str
 
 class TokenPayload(BaseModel):
-    sub: str | None = None
+    sub: UUID | None = None
     role: str | None = None
     plan: str | None = None

@@ -6,7 +6,7 @@
         "type": "UUID",
         "primary_key": true,
         "nullable": false,
-        "default": "<function uuid4 at 0x0000016FD2295760>",
+        "default": "<function uuid4 at 0x00000273D8056FB0>",
         "unique": null
       },
       {
@@ -43,18 +43,18 @@
       },
       {
         "name": "role",
-        "type": "VARCHAR",
+        "type": "VARCHAR(10)",
         "primary_key": false,
         "nullable": false,
-        "default": "student",
+        "default": "UserRole.student",
         "unique": null
       },
       {
         "name": "plan_tier",
-        "type": "VARCHAR",
+        "type": "VARCHAR(7)",
         "primary_key": false,
         "nullable": false,
-        "default": "free",
+        "default": "PlanTier.free",
         "unique": null
       },
       {

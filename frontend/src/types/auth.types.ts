@@ -44,6 +44,10 @@ export interface LoginCredentials {
 // RESPONSE PAYLOADS (data flowing FROM backend TO frontend)
 // ---------------------------------------------------------------------------
 
+export type UserRole = "student" | "instructor" | "admin";
+export type PlanTier = "free" | "basic" | "premium";
+
+
 /**
  * Mirrors: components/schemas/Token
  * Returned by: POST /api/v1/auth/login (200 OK)
@@ -64,8 +68,8 @@ export interface UserResponse {
   first_name: string;
   last_name: string;
   id: string;          // format: uuid
-  role: string;        // e.g. "student", "admin" — enum values defined by backend
-  plan_tier: string;   // e.g. "free", "premium" — enum values defined by backend
+  role: UserRole;        // e.g. "student", "admin" — enum values defined by backend
+  plan_tier: PlanTier;   // e.g. "free", "premium" — enum values defined by backend
   is_active: boolean;
   is_verified: boolean; // false until OTP verified; frontend gates /dashboard on this
   created_at: string;  // format: date-time (ISO 8601)
