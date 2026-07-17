@@ -14,7 +14,7 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {/* Livello 1: Essenziale */}
           <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow border border-zinc-200 dark:border-zinc-800 flex flex-col">
             <h3 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
@@ -25,7 +25,7 @@ export function PricingSection() {
               <span className="text-zinc-500 dark:text-zinc-400 font-medium mb-1">{t("landing.pricing.month")}</span>
             </div>
             
-            <ul className="space-y-4 mb-8 flex-1">
+            <ul className="space-y-6 mb-8 flex-1">
               <li className="flex items-start">
                 <svg className="w-6 h-6 text-indigo-500 dark:text-indigo-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -66,7 +66,7 @@ export function PricingSection() {
               <span className="text-indigo-200 font-medium mb-1">{t("landing.pricing.month")}</span>
             </div>
             
-            <ul className="space-y-4 mb-8 flex-1">
+            <ul className="space-y-6 mb-8 flex-1">
               <li className="flex items-start">
                 <svg className="w-6 h-6 text-indigo-200 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

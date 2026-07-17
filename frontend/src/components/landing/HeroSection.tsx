@@ -22,14 +22,14 @@ export function HeroSection() {
           </Link>
           <Link
             href="#scopri-di-piu"
-            className="w-full sm:w-auto px-8 py-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-indigo-400 font-semibold rounded-full transition-colors text-center"
+            className="w-full sm:w-auto px-8 py-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-50 font-semibold rounded-full transition-colors text-center"
           >
             {t("landing.hero.discover_cta")}
           </Link>
         </div>
       </div>
       <div className="flex-1 w-full relative">
-        <div className="aspect-square md:aspect-[4/3] relative rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white dark:border-zinc-900">
+        <div className="aspect-square md:aspect-[4/3] relative rounded-[2.5rem] overflow-hidden drop-shadow-2xl border-4 border-white dark:border-zinc-900">
           <Image
             src="/hero-mockup.png"
             alt={t("landing.hero.image_alt") as string}

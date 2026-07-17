@@ -14,6 +14,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
 
 // ---------------------------------------------------------------------------
 // Logo
@@ -57,9 +58,19 @@ function SchoolLogo() {
 // ---------------------------------------------------------------------------
 export function Navbar() {
   const { user, logout } = useAuth();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+    
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
+    <header className={`sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80 transition-shadow ${isScrolled ? "shadow-sm" : ""}`}>
       <nav
         className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8"
         aria-label="Navigazione principale"

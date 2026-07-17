@@ -51,7 +51,10 @@
     "about": {
       "title": "Chi Siamo",
       "p1": "Siamo un team di istruttori di guida esperti ed educatori digitali con una missione chiara: rendere l'apprendimento per la patente accessibile, coinvolgente e soprattutto efficace.",
-      "p2": "Dimentica i vecchi manuali noiosi. Con il nostro metodo guidato, imparerai le regole della strada attraverso quiz interattivi, spiegazioni video e simulazioni realistiche.",
+      "p2_intro": "Dimentica i vecchi manuali noiosi. Con il nostro metodo guidato, imparerai le regole della strada attraverso:",
+      "list_item_1": "Quiz interattivi e personalizzati",
+      "list_item_2": "Spiegazioni video dettagliate",
+      "list_item_3": "Simulazioni d'esame realistiche",
       "video_placeholder": "Video Placeholder"
     },
     "pricing": {

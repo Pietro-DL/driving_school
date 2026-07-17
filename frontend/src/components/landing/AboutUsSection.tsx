@@ -1,4 +1,5 @@
 import { useTranslation } from "@/i18n/config";
+import Image from "next/image";
 
 export function AboutUsSection() {
   const t = useTranslation();
@@ -7,18 +8,21 @@ export function AboutUsSection() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 lg:gap-20">
         <div className="flex-1 w-full order-2 md:order-1 relative group cursor-pointer">
           <div className="aspect-video bg-zinc-100 dark:bg-zinc-800 rounded-[2rem] overflow-hidden flex items-center justify-center relative shadow-lg ring-1 ring-zinc-200 dark:ring-zinc-800">
+            <Image
+              src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=1000&auto=format&fit=crop"
+              alt="Driving student"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+            />
             {/* Play Button Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/5 group-hover:bg-black/10 transition-colors">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/50 transition-colors z-10">
               <button className="w-16 h-16 sm:w-20 sm:h-20 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center shadow-2xl text-red-500 transform group-hover:scale-110 transition-all duration-300">
                 <svg className="w-8 h-8 sm:w-10 sm:h-10 ml-1" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </button>
             </div>
-            <span className="text-zinc-400 dark:text-zinc-600 font-medium text-lg flex flex-col items-center gap-2">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-              {t("landing.about.video_placeholder")}
-            </span>
           </div>
           {/* Decorative element behind video */}
           <div className="absolute -inset-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-[2.5rem] -z-10 transform rotate-2"></div>
@@ -33,8 +37,28 @@ export function AboutUsSection() {
               {t("landing.about.p1")}
             </p>
             <p>
-              {t("landing.about.p2")}
+              {t("landing.about.p2_intro")}
             </p>
+            <ul className="space-y-4 mt-6 text-base md:text-lg">
+              <li className="flex items-start">
+                <div className="flex-shrink-0 mt-1 mr-3 text-indigo-500 dark:text-indigo-400">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <span>{t("landing.about.list_item_1")}</span>
+              </li>
+              <li className="flex items-start">
+                <div className="flex-shrink-0 mt-1 mr-3 text-indigo-500 dark:text-indigo-400">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <span>{t("landing.about.list_item_2")}</span>
+              </li>
+              <li className="flex items-start">
+                <div className="flex-shrink-0 mt-1 mr-3 text-indigo-500 dark:text-indigo-400">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-1.89M5 12H3m14 0a9 9 0 11-18 0 9 9 0 0118 0z" /><circle cx="12" cy="12" r="3" /></svg>
+                </div>
+                <span>{t("landing.about.list_item_3")}</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
