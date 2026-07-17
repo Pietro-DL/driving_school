@@ -24,8 +24,8 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.student, nullable=False)
-    plan_tier = Column(Enum(PlanTier), default=PlanTier.free, nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.student.value, nullable=False)
+    plan_tier = Column(Enum(PlanTier), default=PlanTier.free.value, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
